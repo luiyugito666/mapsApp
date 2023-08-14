@@ -8,6 +8,15 @@ interface MarkerAndColor {
   marker:Marker;
 }
 
+//crearemos una infterface para implementar adecuadamente el localstorage y solo tener la informacion que se quire insertar
+
+interface PlainMarker { 
+  color: string;
+  lngLat: number[];
+
+}
+
+
 @Component({
   selector: 'app-markers-page',
   templateUrl: './markers-page.component.html',
@@ -30,6 +39,8 @@ export class MarkersPageComponent implements AfterViewInit{
       zoom: 13, // starting zoom
 
       });
+    
+    this.readFromLocalStorage()
     
     //para personalizar con html al marcador
    /*  const markerHtml = document.createElement('div');
@@ -68,7 +79,19 @@ export class MarkersPageComponent implements AfterViewInit{
       .setLngLat(lnglat)
       .addTo(this.map);
    //para pasar por referencia todos los marcadores en el array markers
-    this.markers.push({color, marker});
+    this.markers.push({ color, marker });
+    
+    this.saveLocalStorage();
+
+    //se mantendra la informacion cuando el marcador se mueva con el siguiente listener, para que se mantenga su marcador
+
+    marker.on('dragend', () =>   this.saveLocalStorage()
+      )
+
+
+
+
+
 
   }
 
@@ -83,16 +106,42 @@ export class MarkersPageComponent implements AfterViewInit{
 
   //fly to para centrar en la corrdenada de la marker
   flyTo(marker: Marker) {
-    
-    this.map?.flyTo(
+        this.map?.flyTo(
       {
         zoom: 14,
-        center:marker.getLngLat(),
-      }
-
-    )
-
+        center: marker.getLngLat(),
+      });
    }
 
+  saveLocalStorage() { 
+    //preparamos la informacion que se desea insertar en el local starage
+    const plainMarkers: PlainMarker[] = this.markers.map(({ color, marker }) => {
+      return { 
+        color,
+        lngLat: marker.getLngLat().toArray()
+       }
+     })
+     localStorage.setItem('plainMarkers',JSON.stringify(plainMarkers));
+   
+
+
+  }
+  //luego de lograr el local starage hacemos el readFromStorage, luego de implemenarlo, mandamos a llamar despues de iniciar el mapa dentro del ngAfterViewInit
+  readFromLocalStorage() { 
+
+    //en caso el marcador no exista entonces devolvera un array de string  vacio
+    const plainMarkersString = localStorage.getItem('plainMarkers') ?? '[]';
+    const plainMarkers:PlainMarker[] = JSON.parse(plainMarkersString);//!OJO, de esta manera es inseguro!
+ 
+    //se debe dar una instruccion que los pone en el mapa
+    plainMarkers.forEach(({ color, lngLat }) => {
+      const [lng, lat] = lngLat;
+      const coords = new LngLat(lng, lat)
+      this.addMarker(coords,color)
+      
+    });
+
+
+  }
 
 }
